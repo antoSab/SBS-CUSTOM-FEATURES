@@ -1,0 +1,701 @@
+<!-- sldsValidatorIgnore -->
+<!--
+  @description       :
+  @author            : Antonio Sabatino
+  @group             :
+  @last modified on  : 02-10-2023
+  @last modified by  : Antonio Sabatino
+-->
+<template>
+	<lightning-card title="Product Selector">
+
+
+		<template if:true={isLoading}> <!-- SHOW SPINNER WHILE LOADING -->
+			<div class="slds-box">
+				<lightning-spinner></lightning-spinner>
+			</div>
+		</template>
+		<template if:false={isLoading}>
+			<template if:true={isDesktop}> <!-- DESKTOP VERSION -->
+				<div>
+					<h3 class="slds-var-p-horizontal_medium"><strong>Contract: <lightning-button variant="base" label={ContractName} onclick={goToContract}></lightning-button></strong></h3>
+					<!--
+					<h3 class="slds-var-p-horizontal_medium"><strong>Opportunity {OptyName}</strong></h3>
+					<lightning-button label="go back to Opportunity" variant="brand" onclick={goToOpty}>s</lightning-button>
+					-->
+				</div>
+				<template if:true={next_visible}>
+					<lightning-button variant="brand" class="slds-var-m-around_medium slds-float_right" slot="actions" label="Next" value="Next" onclick={navigationHandler} disabled={treeEmpty}></lightning-button>
+				</template>
+				<template if:true={import_visible}> <!-- TOP RIGHT BUTTONS -->
+					<lightning-button-icon icon-name="utility:help" class="slds-var-m-horizontal_small"  alternative-text="Delivery Modes Help" title="Delivery Modes Help" slot="actions" onclick={getHelp}></lightning-button-icon>
+					<lightning-button variant="brand-outline" class="slds-var-m-horizontal_small" label="Back" value="Back" onclick={navigationHandler} slot="actions"></lightning-button>
+					<lightning-button variant="success" icon-name="utility:download" icon-position="right" class="slds-var-m-horizontal_small" label="Import" value="Import" onclick={navigationHandler} disabled={import_disabled} slot="actions"></lightning-button>
+				</template> <!-- /TOP RIGHT BUTTONS -->
+				<template if:true={next_visible}> <!-- PAGE ONE -->
+					<div class="slds-box slds-var-m-around_medium"> <!-- FILTERS BOX-->
+						<lightning-button class="slds-m-left_small" label="Clear Filters" variant="destructive" onclick={clearProductFilters}></lightning-button>
+						<lightning-layout>
+							<lightning-layout-item flexibility="auto" padding="horizontal-small">
+								<lightning-input type="text" label="Name / Code" placeholder="Insert at least 3 characters" onchange={productNameCodeHandler} value={productNameCodeFilter}></lightning-input>
+							</lightning-layout-item>
+							<lightning-layout-item flexibility="auto" padding="horizontal-small">
+								<lightning-combobox label="Status" placeholder="Select Status" options={statuses} onchange={productStatusHandler} value={productStatusFilter}></lightning-combobox>
+							</lightning-layout-item>
+							<lightning-layout-item flexibility="auto" padding="horizontal-small">
+								<lightning-combobox label="Business Domain" placeholder="Select Business Domain" options={businessDomains} onchange={productBusinessDomainHandler} value={productBDFilter}></lightning-combobox>
+							</lightning-layout-item>
+							<lightning-layout-item flexibility="auto" padding="horizontal-small">
+								<lightning-combobox label="GTM Offering" options={offerGTMs} onchange={productOfferGTMHandler} value={productGTMOfferingFilter}></lightning-combobox>
+							</lightning-layout-item>
+							<lightning-layout-item flexibility="auto" padding="horizontal-small">
+								<lightning-combobox label="Partner Product" options={partnerProducts} onchange={productPartnerHandler} value={productPartnerFilter}></lightning-combobox>
+							</lightning-layout-item>
+						</lightning-layout>
+					</div> <!-- /FILTERS BOX -->
+					<div class="slds-box slds-var-m-around_medium slds-scrollable_y"> <!-- TABLES BOX -->
+						<div class="slds-box slds-var-m-around_medium slds-scrollable_y"> <!-- PRODUCT SELECTION BOX -->
+							<h2 class="slds-text-heading_medium slds-hyphenate">Products<lightning-helptext content="Grayed out products are forbidden to be sold at the moment"></lightning-helptext></h2>
+							<div class="slds-var-m-around_small slds-scrollable_y" style="height: 60vh; overflow:auto !important; width:100%;">
+								<lightning-datatable
+									class="slds-scrollable_y"
+									id="product-selector"
+									key-field="Id"
+									columns={productSelectionColumns}
+									data={productSelectionData}
+									hide-checkbox-column="true"
+									show-row-number-column="false"
+									max-column-width="10000"
+									onrowaction={rowAction}
+									column-widths-mode="auto"
+									min-column-width="100"
+								></lightning-datatable>
+							</div>
+						</div><!-- /PRODUCT SELECTION BOX -->
+						<div class="slds-box slds-var-m-around_medium"> <!-- TREEGRID BOX -->
+							<h2 class="slds-text-heading_medium slds-hyphenate slds-var-m-left_small">Summary</h2>
+							<p align="left" class="slds-var-m-around_medium">
+								<lightning-button label="Clear All" class="slds-m-right_small slds-m-vertical_medium" onclick={clearAll} variant="destructive"></lightning-button>
+								<lightning-button label="Expand All" class="slds-m-horizontal_small slds-m-vertical_medium" onclick={expandRows} variant="brand"></lightning-button>
+								<lightning-button label="Collapse All" class="slds-m-horizontal_small slds-m-vertical_medium" onclick={collapseRows} variant="brand"></lightning-button>
+							</p>
+							<div class="slds-var-m-around_small" style="height: 60vh;">
+								<template if:false={treeGridLoading}>
+									<lightning-tree-grid
+										style="width: 100%;"
+										key-field="Id"
+										columns={treeGridColumns}
+										data={treeGridData}
+										hide-checkbox-column="true"
+										onrowaction={rowAction}
+									></lightning-tree-grid>
+								</template>
+							</div>
+						</div> <!-- /TREEGRID BOX -->
+					</div> <!-- /TABLES BOX -->
+					<template if:true={optionsSelectionModalOpen}> <!-- MODAL -->
+						<section role="dialog" tabindex="-1" aria-labelledby="modal-heading-01" aria-modal="true" aria-describedby="modal-content-id-1" class="slds-modal slds-fade-in-open">
+							<div class="slds-modal__container">
+								<!-- Modal/Popup Box LWC header here -->
+								<header class="slds-modal__header">
+									<button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" title="Close" onclick={hideModalBox}>
+										<lightning-icon icon-name="utility:close"
+									   		alternative-text="close"
+									   		variant="inverse"
+									   		size="small" ></lightning-icon>
+										<span class="slds-assistive-text">Close</span>
+									</button>
+									<h2 id="modal-heading-01" class="slds-text-heading_medium slds-hyphenate">Option Selection</h2>
+								</header>
+								<!-- Modal/Popup Box LWC body starts here -->
+								<div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
+									<template if:true={modalPageOne}> <!-- MODAL PAGE ONE -->
+										<lightning-radio-group
+											class="slds-var-m-around_medium"
+											name="Radio Group"
+											label="Do you want to add an Option for this Product?"
+											options={checkboxOptions}
+											value={checkboxValue}
+											onchange={checkboxValueHandler}
+										></lightning-radio-group>
+										<lightning-button variant="brand" class="slds-var-m-around_medium" label="Next" onclick={pageOneOnClick}></lightning-button>
+									</template> <!-- /MODAL PAGE ONE-->
+									<template if:true={modalPageTwo}> <!-- MODAL PAGE TWO -->
+										<div>
+											<lightning-button class="slds-button slds-button_brand slds-button_stretch" label="Add Options" variant="brand" onclick={addOptionsOnClick}></lightning-button>
+										</div>
+										<div class="slds-box slds-var-m-around_medium"> <!-- OPTIONS FILTERS -->
+											<lightning-button class="slds-m-left_small" variant="destructive" label="Clear Filters" onclick={clearOptionFilters}></lightning-button>
+											<lightning-layout>
+												<lightning-layout-item flexibility="auto" padding="horizontal-small">
+													<lightning-input type="text" label="Name / Code" placeholder="Insert at least 3 characters" onchange={optionNameCodeHandler} value={optionNameCodeFilter}></lightning-input>
+												</lightning-layout-item>
+												<lightning-layout-item flexibility="auto" padding="horizontal-small">
+													<lightning-combobox label="Status" placeholder="Select Status" options={statuses} onchange={optionStatusHandler} value={optionStatusFilter}></lightning-combobox>
+												</lightning-layout-item>
+												<lightning-layout-item flexibility="auto" padding="horizontal-small">
+													<lightning-combobox label="GTM Offering" options={offerGTMs} onchange={optionOfferGTMHandler} value={optionOffertGTMFilter}></lightning-combobox>
+												</lightning-layout-item>
+												<lightning-layout-item flexibility="auto" padding="horizontal-small">
+													<lightning-combobox label="Business Domain" placeholder="Select Business Domain" options={businessDomains} onchange={optionBusinessDomainHandler} value={optionBDFilter}></lightning-combobox>
+												</lightning-layout-item>
+												<lightning-layout-item flexibility="auto" padding="horizontal-small">
+													<lightning-combobox label="Specific Domain" options={businessSubDomains} onchange={optionBusinessSubDomainHandler} value={optionBSubDFilter}></lightning-combobox>
+												</lightning-layout-item>
+											</lightning-layout>
+										</div> <!-- OPTIONS FILTERS -->
+										<template if:true={isDesktop}> <!-- MODAL OPTIONS TABLE -->
+											<template if:true={optionSelectionData}>
+												<div class="slds-var-m-around_small" style="height: 60vh;">
+													<lightning-datatable
+														id="optionsDataTable"
+														style="width: 100%;"
+														key-field="Id"
+														columns={optionSelectionColumns}
+														data={optionSelectionData}
+														show-row-number-column="false"
+														max-column-width="10000"
+														onrowselection={optionSelectedHandler}
+														selected-rows={selectedRows}
+													></lightning-datatable>
+												</div>
+											</template>
+										</template> <!-- /MODAL OPTIONS TABLE -->
+									</template> <!-- /MODAL PAGE TWO -->
+								</div>
+							</div>
+						</section>
+						<div class="slds-backdrop slds-backdrop_open"></div>
+					</template> <!-- /MODAL -->
+				</template> <!-- /PAGE ONE -->
+				<template if:false={next_visible}> <!-- PAGE TWO -->
+					<div class="slds-box slds-var-m-around_medium search-table-outter">
+						<table class="slds-table slds-table_cell-buffer slds-table_bordered" aria-label="Example default base table of Opportunities">
+							<thead>
+								<tr class="slds-line-height_reset">
+									<th class="" scope="col">
+										<div class="slds-truncate">Product/Option Name</div>
+									</th>
+									<th class="" scope="col">
+										<div class="slds-truncate"><strong style="color: red;">*</strong>{deliveryModeLabel}<lightning-helptext class="slds-var-p-left_medium" content="'On Prem' is included in 'Client Managed'"></lightning-helptext></div>
+									</th>
+									<th class="" scope="col">
+										<div class="slds-truncate"><strong style="color: red;">*</strong>{offTheShelfLabel}</div>
+									</th>
+									<th class="" scope="col">
+										<div class="slds-truncate"><strong style="color: red;">*</strong>{annualMaintenanceLabel}</div>
+									</th>
+									<th class="" scope="col">
+										<div class="slds-truncate"><strong style="color: red;">*</strong>{entryFeeLabel}</div>
+									</th>
+									<th class="" scope="col">
+										<div class="slds-truncate"><strong style="color: red;">*</strong>{annualSubscriptionLabel}</div>
+									</th>
+									<th class="" scope="col">
+										<div class="slds-truncate">Quantity<lightning-helptext class="slds-var-p-left_medium" content="Select 0 in order to select only the options related to this product"></lightning-helptext></div>
+									</th>
+									<th class="" scope="col">
+										<div class="slds-truncate">Price Metrics</div>
+									</th>
+									<th class="" scope="col">
+										<div class="slds-truncate">Cost</div>
+									</th>
+								</tr>
+							</thead>
+							<tbody>
+								<template for:each={fullList} for:item="product">
+									<tr key={product.Id} data-item={product.Id} class="slds-hint-parent">
+										<td class="slds-cell-wrap" data-label="Truncated, no wrap">
+											<div class="slds-truncate">{product.Name}</div> <!-- PRODUCT NAME -->
+										</td>
+										<td> <!-- Delivery Mode -->
+											<lightning-combobox data-item={product.Id} variant="label-hidden" options={deliveryModes} required="true" onchange={deliveryModeConfirmationHandler}></lightning-combobox>
+										</td>
+										<td> <!-- Licence Off the Shelf-->
+											<lightning-input data-item={product.Id} value={product.zero} variant="label-hidden" type="number" required="true" onchange={licencePriceConfirmationHandler}></lightning-input>
+										</td>
+										<td> <!-- Annual Mainteinance -->
+											<lightning-input data-item={product.Id} value={product.zero} variant="label-hidden" type="number" required="true" onchange={annualMainteinanceConfirmationHandler}></lightning-input>
+										</td>
+										<td> <!-- Entry Fee -->
+											<lightning-input data-item={product.Id} variant="label-hidden" type="number" required="true" onchange={entryFeeConfirmationHandler}></lightning-input>
+										</td>
+										<td> <!-- Annual Subscription Price -->
+											<lightning-input data-item={product.Id} variant="label-hidden" type="number" required="true" onchange={annualSubscriptionConfirmationHandler}></lightning-input>
+										</td>
+										<td>  <!-- Quantity -->
+											<lightning-input data-item={product.Id} variant="label-hidden" type="number" placeholder="1 if left blank" onchange={quantityConfirmationHandler}></lightning-input>
+										</td>
+										<td>  <!-- Price Metrics -->
+											<lightning-input data-item={product.Id} variant="label-hidden" onchange={priceMetricsConfirmationHandler}></lightning-input>
+										</td>
+										<td> <!-- Cost -->
+											<div style="display:flex; flex-direction: row; justify-content: left; align-items: left">
+												<lightning-input data-item={product.Id} variant="label-hidden" type="number" required={product.Partner_Product__c} onchange={costConfirmationHandler}></lightning-input>
+												<template if:true={product.Partner_Product__c}>
+													<lightning-helptext class="slds-m-left_medium" icon-name="utility:alert" icon-variant="warning" content="As partner product, the cost is mandatory"></lightning-helptext>
+												</template>
+											</div>
+										</td>
+									</tr>
+								</template>
+							</tbody>
+						</table>
+						<div style="height: 30vh;"></div>
+					</div>
+				</template> <!-- /PAGE TWO -->
+			</template> <!-- /DESKTOP VERSION -->
+			<!--_____________________________________________________________________________________________________________________________________________-->
+			<template if:false={isDesktop}> <!-- MOBILE VERSION -->
+				<div>
+					<h3 class="slds-var-p-horizontal_medium"><strong>Contract {ContractName}</strong></h3>
+				</div>
+				<template if:true={next_visible}> <!-- TOP RIGHT BUTTONS -->
+					<template if:false={optionsSelectionModalOpen}>
+						<lightning-button variant="brand" class="slds-var-m-horizontal_small" label="Next" value="Next" onclick={navigationHandler} slot="actions" disabled={treeEmpty}></lightning-button>
+					</template>
+				</template>
+				<template if:true={import_visible}>
+					<lightning-button variant="brand-outline" class="slds-var-m-horizontal_small" label="Back" value="Back" onclick={navigationHandler} slot="actions"></lightning-button>
+					<lightning-button variant="success" icon-name="utility:download" icon-position="right" class="slds-var-m-horizontal_small" label="Import" value="Import" onclick={navigationHandler} disabled={import_disabled} slot="actions"></lightning-button>
+				</template> <!-- /TOP RIGHT BUTTONS -->
+				<template if:true={next_visible}>
+					<template if:false={optionsSelectionModalOpen}> <!-- PAGE ONE -->
+						<div class="slds-box slds-var-m-around_medium"> <!-- FILTERS BOX -->
+							<lightning-layout>
+								<lightning-layout-item flexibility="auto" padding="vertical-small">
+									<lightning-input type="text" label="Name / Code" onchange={productNameCodeHandler}></lightning-input>
+								</lightning-layout-item>
+							</lightning-layout>
+							<lightning-layout>
+								<lightning-layout-item class="slds-has-flexi-truncate" flexibility="auto" padding="vertical-small">
+									<lightning-combobox class="slds-has-flexi-truncate" label="Status" placeholder="Select Status" options={statuses} onchange={productStatusHandler}></lightning-combobox>
+								</lightning-layout-item>
+							</lightning-layout>
+							<lightning-layout>
+								<lightning-layout-item class="slds-has-flexi-truncate" flexibility="auto" padding="vertical-small">
+									<lightning-combobox class="slds-cell-wrap slds-text" label="Business Domain" placeholder="Select Business Domain" options={businessDomains} onchange={productBusinessDomainHandler}></lightning-combobox>
+								</lightning-layout-item>
+							</lightning-layout>
+							<lightning-layout>
+								<lightning-layout-item class="slds-has-flexi-truncate" flexibility="auto" padding="vertical-small">
+									<lightning-combobox class="slds-cell-wrap slds-text" label="GTM Offering" options={offerGTMs} onchange={productOfferGTMHandler}></lightning-combobox>
+								</lightning-layout-item>
+							</lightning-layout>
+							<lightning-layout>
+								<lightning-layout-item class="slds-has-flexi-truncate" flexibility="auto" padding="vertical-small">
+									<lightning-combobox class="slds-cell-wrap slds-text" label="Partner Product" options={partnerProducts} onchange={productPartnerHandler}></lightning-combobox>
+								</lightning-layout-item>
+							</lightning-layout>
+						</div> <!-- /FILTERS BOX -->
+						<div class="slds-box slds-var-m-around_medium"> <!-- PRODUCTS BOX -->
+							<h2 class="slds-text-heading_medium slds-hyphenate">Products</h2>
+							<div class="slds-var-m-around_small slds-scrollable_y" style="height: 60vh;">
+								<template for:each={productSelectionData} for:item="product">
+									<div key={product.Id} class="slds-box">
+										<lightning-card title={product.ProductCode}>
+											<lightning-button-icon data-item={product.Id} icon-name="utility:add" variant="brand"  alternative-text="Settings" title="Settings" onclick={mobileRowAction} slot="actions"></lightning-button-icon>
+											<p><lightning-formatted-text value={product.Name}></lightning-formatted-text></p>
+											<p><lightning-formatted-text value={product.Offer_GTM__c}></lightning-formatted-text></p>
+										</lightning-card>
+									</div>
+								</template>
+							</div>
+						</div> <!-- /PRODUCTS BOX-->
+						<div class="slds-box slds-var-m-around_medium"> <!-- SUMMARY BOX -->
+							<h2 class="slds-text-heading_medium slds-hyphenate">Summary</h2>
+							<div class="slds-var-m-around_small slds-scrollable_y" style="height: 60vh;">
+								<template for:each={treeGridData} for:item="product">
+									<lightning-card key={product.Id} title={product.ProductCode}>
+										<p><lightning-formatted-text value={product.Name}></lightning-formatted-text></p>
+										<p><lightning-formatted-text value={product.Offer_GTM__c}></lightning-formatted-text></p>
+									</lightning-card>
+									<template for:each={product._children} for:item="option">
+										<lightning-card key={option.Id} title={option.ProductCode}>
+											<p><lightning-formatted-text value={option.Name}></lightning-formatted-text></p>
+											<p><lightning-formatted-text value={option.Offer_GTM__c}></lightning-formatted-text></p>
+										</lightning-card>
+									</template>
+								</template>
+							</div>
+						</div> <!-- /SUMMARY BOX -->
+					</template> <!-- /PAGE ONE -->
+					<template if:true={optionsSelectionModalOpen}> <!-- MODAL -->
+						<template if:true={modalPageOne}> <!-- MODAL PAGE ONE -->
+							<lightning-radio-group
+								class="slds-var-m-around_medium"
+								name="Radio Group"
+								label="Do you want to add an Option for this Product?"
+								options={checkboxOptions}
+								value={checkboxValue}
+								onchange={checkboxValueHandler}
+							></lightning-radio-group>
+							<lightning-button variant="brand" class="slds-var-m-around_medium" label="Next" onclick={pageOneOnClick}></lightning-button>
+						</template> <!-- /MODAL PAGE ONE-->
+						<template if:false={modalPageOne}> <!-- MODAL PAGE TWO -->
+							<div>
+								<lightning-button class="slds-button slds-button_brand slds-button_stretch slds-var-p-around_medium" label="Add Options" variant="brand" onclick={addOptionsOnClick}></lightning-button>
+							</div>
+							<div class="slds-box slds-var-m-around_medium"> <!-- FILTERS BOX -->
+								<lightning-layout>
+									<lightning-layout-item class="slds-has-flexi-truncate" flexibility="auto" padding="vertical-small">
+										<lightning-input type="text" label="Name / Code" onchange={optionNameCodeHandler}></lightning-input>
+									</lightning-layout-item>
+								</lightning-layout>
+								<lightning-layout>
+									<lightning-layout-item class="slds-has-flexi-truncate" flexibility="auto" padding="vertical-small">
+										<lightning-combobox label="Status" placeholder="Select Status" options={statuses} onchange={optionStatusHandler}></lightning-combobox>
+									</lightning-layout-item>
+								</lightning-layout>
+								<lightning-layout>
+									<lightning-layout-item  class="slds-has-flexi-truncate" flexibility="auto" padding="vertical-small">
+										<lightning-combobox label="GTM Offering" options={offerGTMs} onchange={optionOfferGTMHandler}></lightning-combobox>
+									</lightning-layout-item>
+								</lightning-layout>
+								<lightning-layout>
+									<lightning-layout-item class="slds-has-flexi-truncate" flexibility="auto" padding="vertical-small">
+										<lightning-combobox label="Business Domain" placeholder="Select Business Domain" options={businessDomains} onchange={optionBusinessDomainHandler}></lightning-combobox>
+									</lightning-layout-item>
+								</lightning-layout>
+								<lightning-layout>
+									<lightning-layout-item class="slds-has-flexi-truncate" flexibility="auto" padding="vertical-small">
+										<lightning-combobox label="Specific Domain" options={businessSubDomains} onchange={optionBusinessSubDomainHandler}></lightning-combobox>
+									</lightning-layout-item>
+								</lightning-layout>
+							</div> <!-- /FILTERS BOX -->
+							<div class="slds-box slds-var-m-around_medium">
+								<h2 class="slds-text-heading_medium slds-hyphenate">Options</h2>
+								<div class="slds-var-m-around_small slds-scrollable_y" style="height: 60vh;"> <!-- OPTIONS TABLE -->
+									<template for:each={optionSelectionData} for:item="option">
+										<div key={option.Id} class="slds-box">
+											<lightning-card title={option.ProductCode}>
+												<lightning-input type="checkbox" slot="actions" data-item={option.Id} onchange={optionCheckboxChange}></lightning-input>
+												<p><lightning-formatted-text value={option.Name}></lightning-formatted-text></p>
+												<p><lightning-formatted-text value={option.Offer_GTM__c}></lightning-formatted-text></p>
+											</lightning-card>
+										</div>
+									</template>
+								</div>
+							</div><!-- /OPTIONS TABLE-->
+						</template> <!-- /MODAL PAGE TWO -->
+					</template> <!-- /MODAL -->
+				</template>
+				<template if:false={next_visible}>
+					<lightning-accordion>
+						<template for:each={fullList} for:item="product">
+							<lightning-accordion-section key={product.Id} name={product.ProductCode} label={product.ProductCode}>
+								<lightning-combobox data-item={product.Id} variant="Delivery Mode" options={deliveryModes} onchange={deliveryModeConfirmationHandler}></lightning-combobox>
+								<lightning-input data-item={product.Id} label="Licence Off The Shelf" type="number" formatter="currency" required="true" onchange={licencePriceConfirmationHandler}></lightning-input>
+								<lightning-input data-item={product.Id} label="Annual Mainteinance" type="number" formatter="currency" required="true" onchange={annualMainteinanceConfirmationHandler}></lightning-input>
+								<lightning-input data-item={product.Id} label="Entry Fee" type="number" formatter="currency" required="true" onchange={entryFeeConfirmationHandler}></lightning-input>
+								<lightning-input data-item={product.Id} label="Annual Subscription Price" type="number" formatter="currency" required="true" onchange={annualSubscriptionConfirmationHandler}></lightning-input>
+								<lightning-input data-item={product.Id} label="Quantity" type="number" required="true" placeholder="1 if left blank" onchange={quantityConfirmationHandler}></lightning-input>
+								<lightning-input data-item={product.Id} label="Price Metrics" onchange={priceMetricsConfirmationHandler}></lightning-input>
+								<lightning-input data-item={product.Id} label="Cost" type="number" formatter="currency" onchange={costConfirmationHandler}></lightning-input>
+							</lightning-accordion-section>
+						</template>
+					</lightning-accordion>
+					<!--
+					<ul class="slds-accordion">
+						<template for:each={fullList} for:item="product">
+							<li key={product.Id} class="slds-accordion__list-item">
+								<section class="slds-accordion__section slds-is-open">
+									<div class="slds-accordion__summary">
+										<h2 class="slds-accordion__summary-heading">
+											  <button class="slds-button slds-button_reset slds-accordion__summary-action" aria-controls={product.Id} aria-expanded="true" title="Accordion summary">
+												<svg class="slds-accordion__summary-action-icon slds-button__icon slds-button__icon_left" aria-hidden="true">
+													  <use xlink:href="/assets/icons/utility-sprite/svg/symbols.svg#switch"></use>
+												</svg>
+												<span class="slds-accordion__summary-content">Accordion summary</span>
+											  </button>
+										</h2>
+									  </div>
+									  <div class="slds-accordion__content" id={product.Id}>
+										<lightning-combobox data-item={product.Id} variant="label-hidden" options={deliveryModes} onchange={deliveryModeConfirmationHandler}></lightning-combobox>
+										<lightning-input data-item={product.Id} variant="label-hidden" type="number" formatter="currency" required="true" onchange={licencePriceConfirmationHandler}></lightning-input>
+										<lightning-input data-item={product.Id} variant="label-hidden" type="number" formatter="currency" required="true" onchange={annualMainteinanceConfirmationHandler}></lightning-input>
+										<lightning-input data-item={product.Id} variant="label-hidden" type="number" formatter="currency" required="true" onchange={entryFeeConfirmationHandler}></lightning-input>
+										<lightning-input data-item={product.Id} variant="label-hidden" type="number" formatter="currency" required="true" onchange={annualSubscriptionConfirmationHandler}></lightning-input>
+										<lightning-input data-item={product.Id} variant="label-hidden" type="number" required="true" placeholder="1 if left blank" onchange={quantityConfirmationHandler}></lightning-input>
+										<lightning-input data-item={product.Id} variant="label-hidden" onchange={priceMetricsConfirmationHandler}></lightning-input>
+										<lightning-input data-item={product.Id} variant="label-hidden" type="number" formatter="currency" onchange={costConfirmationHandler}></lightning-input>
+									  </div>
+								</section>
+							  </li>
+						</template>
+					</ul>
+					-->
+				</template>
+			</template>
+		</template>
+
+		<!-- OLD VERSION
+		<template if:false={isLoading}>
+			<div>
+				<h3 class="slds-var-p-horizontal_medium"><strong>Opportunity {OptyName}</strong></h3>
+			</div>
+			<template if:true={next_visible}>
+				<lightning-button variant="brand" class="slds-var-m-horizontal_small" label="Next" value="Next" onclick={navigationHandler} slot="actions" disabled={treeEmpty}></lightning-button>
+			</template>
+			<template if:true={import_visible}>
+				<lightning-button variant="brand-outline" class="slds-var-m-horizontal_small" label="Back" value="Back" onclick={navigationHandler} slot="actions"></lightning-button>
+				<lightning-button variant="success" icon-name="utility:download" icon-position="right" class="slds-var-m-horizontal_small" label="Import" value="Import" onclick={navigationHandler} disabled={import_disabled} slot="actions"></lightning-button>
+			</template>
+			<template if:true={next_visible}>
+				<div class="slds-box slds-var-m-around_medium">
+					<template if:true={isDesktop}>
+						<lightning-layout>
+							<lightning-layout-item flexibility="auto" padding="horizontal-small">
+								<lightning-input type="text" label="Name / Code" onchange={productNameCodeHandler}></lightning-input>
+							</lightning-layout-item>
+							<lightning-layout-item flexibility="auto" padding="horizontal-small">
+								<lightning-combobox label="Status" placeholder="Select Status" options={statuses} onchange={productStatusHandler}></lightning-combobox>
+							</lightning-layout-item>
+							<lightning-layout-item flexibility="auto" padding="horizontal-small">
+								<lightning-combobox label="Business Domain" placeholder="Select Business Domain" options={businessDomains} onchange={productBusinessDomainHandler}></lightning-combobox>
+							</lightning-layout-item>
+						</lightning-layout>
+					</template>
+					<template if:false={isDesktop}>
+						<lightning-layout>
+							<lightning-layout-item flexibility="auto" padding="vertical-small">
+								<lightning-input type="text" label="Name / Code" onchange={productNameCodeHandler}></lightning-input>
+						</lightning-layout-item>
+						</lightning-layout>
+						<lightning-layout>
+							<lightning-layout-item class="slds-has-flexi-truncate" flexibility="auto" padding="vertical-small">
+								<lightning-combobox class="slds-has-flexi-truncate" label="Status" placeholder="Select Status" options={statuses} onchange={productStatusHandler}></lightning-combobox>
+							</lightning-layout-item>
+						</lightning-layout>
+						<lightning-layout>
+							<lightning-layout-item class="slds-has-flexi-truncate" flexibility="auto" padding="vertical-small">
+								<lightning-combobox class="slds-cell-wrap slds-text" label="Business Domain" placeholder="Select Business Domain" options={businessDomains} onchange={productBusinessDomainHandler}></lightning-combobox>
+							</lightning-layout-item>
+						</lightning-layout>
+					</template>
+				</div>
+				<div class="slds-box slds-var-m-around_medium">
+					<template if:true={isDesktop}>
+						<div class="slds-box slds-var-m-around_medium">
+							<h2 class="slds-text-heading_medium slds-hyphenate">Products</h2>
+							<div class="slds-var-m-around_small" style="height: 60vh;">
+								<lightning-datatable
+									style="width: 100%;"
+									key-field="Id"
+									columns={productSelectionColumns}
+									data={productSelectionData}
+									hide-checkbox-column="true"
+									show-row-number-column="false"
+									max-column-width="10000"
+									onrowaction={rowAction}
+								></lightning-datatable>
+							</div>
+						</div>
+						<div class="slds-box slds-var-m-around_medium">
+							<h2 class="slds-text-heading_medium slds-hyphenate">Summary</h2>
+							<div class="slds-var-m-around_small" style="height: 60vh;">
+								<lightning-tree-grid
+									style="width: 100%;"
+									key-field="Id"
+									columns={treeGridColumns}
+									data={treeGridData}
+									hide-checkbox-column="true"
+								></lightning-tree-grid>
+							</div>
+						</div>
+					</template>
+					<template if:false={optionsSelectionModalOpen}>
+						<template if:false={isDesktop}>
+							<div class="slds-box slds-var-m-around_medium">
+								<h2 class="slds-text-heading_medium slds-hyphenate">Products</h2>
+								<div class="slds-var-m-around_small slds-scrollable_y" style="height: 60vh;">
+									<template for:each={productSelectionData} for:item="product">
+										<lightning-card key={product.Id} title={product.ProductCode}>
+											<lightning-button-icon icon-name="utility:add" variant="brand"  alternative-text="Settings" title="Settings" onclick={mobileRowAction} slot="actions"></lightning-button-icon>
+											<p><lightning-formatted-text value={product.Name}></lightning-formatted-text></p>
+											<p><lightning-formatted-text value={product.Offer_GTM__c}></lightning-formatted-text></p>
+										</lightning-card>
+									</template>
+								</div>
+							</div>
+						</template>
+					</template>
+					<template if:true={optionsSelectionModalOpen}>
+						<template if:false={isDesktop}>
+
+						</template>
+					</template>
+				</div>
+				<template if:true={optionsSelectionModalOpen}>
+					<template if:true={isDesktop}>
+						<section role="dialog" tabindex="-1" aria-labelledby="modal-heading-01" aria-modal="true" aria-describedby="modal-content-id-1" class="slds-modal slds-fade-in-open">
+							<div class="slds-modal__container">
+								<header class="slds-modal__header">
+									<button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" title="Close" onclick={hideModalBox}>
+										<lightning-icon icon-name="utility:close"
+									   		alternative-text="close"
+									   		variant="inverse"
+									   		size="small" ></lightning-icon>
+										<span class="slds-assistive-text">Close</span>
+									</button>
+									<h2 id="modal-heading-01" class="slds-text-heading_medium slds-hyphenate">Option Selection</h2>
+								</header>
+								<div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
+									<template if:true={modalPageOne}>
+										<lightning-radio-group
+											class="slds-var-m-around_medium"
+											name="Radio Group"
+											label="Do you want to add an Option for this Product?"
+											options={checkboxOptions}
+											value={checkboxValue}
+											onchange={checkboxValueHandler}
+										></lightning-radio-group>
+										<lightning-button variant="brand" class="slds-var-m-around_medium" label="Next" onclick={pageOneOnClick}></lightning-button>
+									</template>
+									<template if:true={modalPageTwo}>
+										<div>
+											<lightning-button class="slds-button slds-button_brand slds-button_stretch" label="Add Options" variant="brand" onclick={addOptionsOnClick}></lightning-button>
+										</div>
+										<div class="slds-box slds-var-m-around_medium">
+											<lightning-layout>
+												<lightning-layout-item flexibility="auto" padding="horizontal-small">
+													<lightning-input type="text" label="Name / Code" onchange={optionNameCodeHandler}></lightning-input>
+												</lightning-layout-item>
+												<lightning-layout-item flexibility="auto" padding="horizontal-small">
+													<lightning-combobox label="Status" placeholder="Select Status" options={statuses} onchange={optionStatusHandler}></lightning-combobox>
+												</lightning-layout-item>
+												<lightning-layout-item flexibility="auto" padding="horizontal-small">
+													<lightning-combobox label="Business Domain" placeholder="Select Business Domain" options={businessDomains} onchange={optionBusinessDomainHandler}></lightning-combobox>
+												</lightning-layout-item>
+											</lightning-layout>
+										</div>
+										<template if:true={isDesktop}>
+											<template if:true={optionSelectionData}>
+												<div class="slds-var-m-around_small" style="height: 60vh;">
+													<lightning-datatable
+														id="optionsDataTable"
+														style="width: 100%;"
+														key-field="Id"
+														columns={optionSelectionColumns}
+														data={optionSelectionData}
+														show-row-number-column="false"
+														max-column-width="10000"
+														onrowselection={optionSelectedHandler}
+													></lightning-datatable>
+												</div>
+											</template>
+										</template>
+										<template if:false={isDesktop}>
+										</template>
+									</template>
+								</div>
+							</div>
+						</section>
+						<div class="slds-backdrop slds-backdrop_open"></div>
+					</template>
+					<template if:false={isDesktop}>
+						<div class="slds-box slds-var-m-around_medium">
+							<template if:true={modalPageOne}>
+								<lightning-radio-group
+									class="slds-var-m-around_medium"
+									name="Radio Group"
+									label="Do you want to add an Option for this Product?"
+									options={checkboxOptions}
+									value={checkboxValue}
+									onchange={checkboxValueHandler}
+								></lightning-radio-group>
+								<lightning-button variant="brand" class="slds-var-m-around_medium" label="Next" onclick={pageOneOnClick}></lightning-button>
+							</template>
+							<template if:true={modalPageTwo}>
+								<h2 class="slds-text-heading_medium slds-hyphenate">Options</h2>
+								<template if:true={optionSelectionData}>
+									<div class="slds-var-m-around_small slds-scrollable_y" style="height: 60vh;">
+										<template for:each={optionSelectionData} for:item="product">
+											<lightning-card key={product.Id} title={product.ProductCode}>
+												<lightning-button-icon icon-name="utility:add" variant="brand"  alternative-text="Settings" title="Settings" slot="actions"></lightning-button-icon>
+												<p><lightning-formatted-text value={product.Name}></lightning-formatted-text></p>
+												<p><lightning-formatted-text value={product.Offer_GTM__c}></lightning-formatted-text></p>
+											</lightning-card>
+										</template>
+									</div>
+								</template>
+							</template>
+						</div>
+					</template>
+				</template>
+			</template>
+			<template if:false={next_visible}>
+				<div class="slds-box slds-var-m-around_medium search-table-outter">
+					<table class="slds-table slds-table_cell-buffer slds-table_bordered" aria-label="Example default base table of Opportunities">
+						<thead>
+							<tr class="slds-line-height_reset">
+								<th class="" scope="col">
+									<div class="slds-truncate" title="Opportunity Name">Product/Option Name</div>
+								</th>
+								<th class="" scope="col">
+									<div class="slds-truncate" title="Opportunity Name">Delivery Mode</div>
+								</th>
+								<th class="" scope="col">
+									<div class="slds-truncate" title="Opportunity Name"><strong style="color: red;">*</strong> Licence Off the shelf</div>
+								</th>
+								<th class="" scope="col">
+									<div class="slds-truncate" title="Opportunity Name"><strong style="color: red;">*</strong> Annual Mainteinance</div>
+								</th>
+								<th class="" scope="col">
+									<div class="slds-truncate" title="Opportunity Name"><strong style="color: red;">*</strong> Entry Fee</div>
+								</th>
+								<th class="" scope="col">
+									<div class="slds-truncate" title="Opportunity Name"><strong style="color: red;">*</strong> Annual Subsctiption Price</div>
+								</th>
+								<th class="" scope="col">
+									<div class="slds-truncate" title="Opportunity Name"><strong style="color: red;">*</strong>Quantity</div>
+								</th>
+								<th class="" scope="col">
+									<div class="slds-truncate" title="Opportunity Name">Price Metrics</div>
+								</th>
+								<th class="" scope="col">
+									<div class="slds-truncate" title="Opportunity Name">Cost</div>
+								</th>
+							</tr>
+						</thead>
+						<tbody>
+							<template for:each={fullList} for:item="product">
+								<tr key={product.Id} data-item={product.Id} class="slds-hint-parent">
+									<td class="slds-cell-wrap" data-label="Truncated, no wrap">
+										<div class="slds-truncate">{product.Name}</div>
+									</td>
+									<td>
+										<lightning-combobox data-item={product.Id} variant="label-hidden" options={deliveryModes} onchange={deliveryModeConfirmationHandler}></lightning-combobox>
+									</td>
+									<td>
+										<lightning-input data-item={product.Id} variant="label-hidden" type="number" formatter="currency" required="true" onchange={licencePriceConfirmationHandler}></lightning-input>
+									</td>
+									<td>
+										<lightning-input data-item={product.Id} variant="label-hidden" type="number" formatter="currency" required="true" onchange={annualMainteinanceConfirmationHandler}></lightning-input>
+									</td>
+									<td>
+										<lightning-input data-item={product.Id} variant="label-hidden" type="number" formatter="currency" required="true" onchange={entryFeeConfirmationHandler}></lightning-input>
+									</td>
+									<td>
+										<lightning-input data-item={product.Id} variant="label-hidden" type="number" formatter="currency" required="true" onchange={annualSubscriptionConfirmationHandler}></lightning-input>
+									</td>
+									<td>
+										<lightning-input data-item={product.Id} variant="label-hidden" type="number" required="true" placeholder="1 if left blank" onchange={quantityConfirmationHandler}></lightning-input>
+									</td>
+									<td>
+										<lightning-input data-item={product.Id} variant="label-hidden" onchange={priceMetricsConfirmationHandler}></lightning-input>
+									</td>
+									<td>
+										<lightning-input data-item={product.Id} variant="label-hidden" type="number" formatter="currency" onchange={costConfirmationHandler}></lightning-input>
+									</td>
+								</tr>
+							</template>
+						</tbody>
+					</table>
+					<div style="height: 30vh;"></div>
+				</div>
+			</template>
+		</template>
+		-->
+	</lightning-card>
+</template>

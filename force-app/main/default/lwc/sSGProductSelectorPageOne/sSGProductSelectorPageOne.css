@@ -1,0 +1,16 @@
+.slds-modal__container{
+	width: 80% !important;
+	max-width: 80% !important;
+}
+
+.search-table-outter { overflow-x: scroll; height: 60vh;}
+
+th, td { min-width: 200px; }
+
+.datatable-full-size {
+	width: 100% !important;
+  }
+
+.row-is-selected{
+	background: black;
+}

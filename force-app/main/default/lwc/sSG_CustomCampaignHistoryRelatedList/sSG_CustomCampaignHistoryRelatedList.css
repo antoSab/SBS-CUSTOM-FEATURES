@@ -1,0 +1,16 @@
+:host .LARGE .related-list{
+	border-bottom: var(--slds-c-card-sizing-border, 1px) solid var(--slds-c-card-color-border, rgb(201, 201, 201));
+	border-radius: 0;
+}
+:host .SMALL .related-list{
+	border-bottom: var(--slds-c-card-sizing-border, 1px) solid var(--slds-c-card-color-border, rgb(201, 201, 201));
+	border-radius: 0;
+}
+
+.datatable-container{
+	margin-bottom: -1px;
+}
+
+.customFooter{
+	margin-top: -1px;
+}

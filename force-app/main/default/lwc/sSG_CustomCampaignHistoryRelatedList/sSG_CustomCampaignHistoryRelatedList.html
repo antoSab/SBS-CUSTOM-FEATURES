@@ -1,0 +1,118 @@
+<!--
+  @description       :
+  @author            : Antonio Sabatino
+  @group             :
+  @last modified on  : 01-03-2023
+  @last modified by  : Antonio Sabatino
+-->
+<template>
+    <div class={sizeClass}>
+		<div class={header_class}>
+			<div class="slds-media__body slds-align-middle slds-grid">
+				<span class="slds-icon_container slds-var-m-right_small slds-var-m-top_xxx-small slds-grid_vertical-align-center">
+					<lightning-icon icon-name="standard:campaign_members" size="small"></lightning-icon>
+				</span>
+				<h2 class="slds-card__header-title slds-col slds-float_left slds-grid_vertical-align-center">Campaign History ({campaignHistorySize})</h2>
+				<div class="slds-col_bump-left">
+					<template if:true={smallLayout}>
+						<lightning-button-menu onselect={buttonMenuSelected} menu-alignment="right" icon-size="x-small" variant="border-filled">
+							<lightning-menu-item value="add-to-campaign" label="Add To Campaign"></lightning-menu-item>
+						</lightning-button-menu>
+					</template>
+					<template if:false={smallLayout}>
+						<lightning-button class="slds-col slds-float_right" slot="actions" label="Add To Campaign" onclick={showModal}></lightning-button>
+					</template>
+				</div>
+			</div>
+		</div>
+
+		<div class={body_class}>
+			<template if:false={smallLayout}>
+				<template if:true={relateds}>
+					<lightning-datatable
+						key-field="Id"
+						data={relateds}
+						columns={columns}
+						max-column-width="2000"
+						hide-checkbox-column="true"
+						resize-column-disabled="true"
+						onrowaction={handleRowAction}
+					></lightning-datatable>
+				</template>
+			</template>
+			<template if:true={smallLayout}>
+				<div class="slds-p-around_medium lgc-bg">
+					<template if:true={relateds}>
+						<template for:each={relateds} for:item="related">
+							<lightning-tile key={related.Id} data-item={related.Id} label={related.CampaignName} href={related.CampaignId} actions={tileActions} onactiontriggered={handleTileAction}>
+								<dl class="slds-dl_horizontal">
+									<dt class="slds-dl_horizontal__label">
+										<p class="slds-truncate" title="Start Date">Start Date:</p>
+									</dt>
+									<dd class="slds-dl_horizontal__detail slds-tile__meta">
+										<p class="slds-truncate" title="StartDateVal">{related.CampaignStartDate}</p>
+									</dd>
+									<dt class="slds-dl_horizontal__label">
+										<p class="slds-truncate" title="Type">Type:</p>
+									</dt>
+									<dd class="slds-dl_horizontal__detail slds-tile__meta">
+										<p class="slds-truncate" title="typeVAl">{related.Type}</p>
+									</dd>
+									<dt class="slds-dl_horizontal__label">
+										<p class="slds-truncate" title="Type">Status:</p>
+									</dt>
+									<dd class="slds-dl_horizontal__detail slds-tile__meta">
+										<p class="slds-truncate" title="StatusVal">{related.Status}</p>
+									</dd>
+								</dl>
+							</lightning-tile>
+						</template>
+					</template>
+				</div>
+			</template>
+		</div>
+
+		<a href={viewAllLink} class="slds-text-link">
+			<div class="slds-card__footer customFooter">
+				<span>View All</span>
+			</div>
+		</a>
+
+	</div>
+	<template if:true={openModal}>
+		<div class="slds-modal slds-fade-in-open slds-backdrop">
+		  <div class="slds-modal__container">
+			<!--HEADER Section-->
+			<div class="slds-modal__header">
+			  <lightning-button-icon icon-name="utility:close" alternative-text="Close this window" size="large"
+				variant="bare-inverse" onclick={closeModal} class="slds-modal__close">
+			  </lightning-button-icon>
+			  <h2>Choose a Campaign</h2>
+			</div>
+			<!--Body Section-->
+			<div class="slds-box slds-p-top_small" style="background-color: white;">
+				<lightning-record-edit-form object-api-name="CampaignMember">
+					<lightning-input-field field-name="CampaignId" variant="label-hidden" onchange={handleCampaignSelection} required> </lightning-input-field>
+				</lightning-record-edit-form>
+			</div>
+			<!--Footer Section-->
+			<div class="slds-modal__footer">
+				<lightning-button
+					class="slds-var-m-horizontal_medium"
+					label="Cancel"
+					name={buttonCancelModal}
+					variant="neutral"
+					onclick={handleNavigationButtons}
+				></lightning-button>
+			  	<lightning-button
+					label="Next"
+					name={buttonNextModal}
+					variant="brand"
+					onclick={handleNavigationButtons}
+					disabled={nextButtonDisabled}
+				></lightning-button>
+			</div>
+		  </div>
+		</div>
+	  </template>
+</template>

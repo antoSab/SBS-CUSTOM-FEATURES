@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>55.0</apiVersion>
+    <isExposed>true</isExposed>
+	<masterLabel>Contract Product Selector</masterLabel>
+	<description>Selection of Products and Options</description>
+	<targets>
+		<target>lightning__FlowScreen</target>
+		<target>lightning__AppPage</target>
+		<target>lightning__Tab</target>
+	</targets>
+	<targetConfigs>
+		<targetConfig targets="lightning__FlowScreen">
+			<property name="RecordId" type="String" />
+		</targetConfig>
+	</targetConfigs>
+</LightningComponentBundle>

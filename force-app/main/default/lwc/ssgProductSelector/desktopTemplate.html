@@ -6,8 +6,21 @@
   @last modified by  : Antonio Sabatino
 -->
 <template>
-	<lightning-card>
-
+	<lightning-card variant="Narrow" icon-name={objectIcon}>
+		<div slot="title">
+			<h3 class="slds-var-p-horizontal_medium"><strong>{objectLabel}: <lightning-button variant="base" label={recordName} onclick={goToRecord}></lightning-button></strong></h3>
+		</div>
+		<lightning-button-group slot="actions">
+			<template if:true={nextButtonView}>
+				<lightning-button name={nextButtonName} variant="brand" label="Next" disabled={nextButtonDisabled} onclick={onClickHandler}></lightning-button>
+			</template>
+			<template if:true={backButtonView}>
+				<lightning-button name={backButtonName} variant="Neutral" label="Back" disabled={backButtonDisabled} onclick={onClickHandler}></lightning-button>
+			</template>
+			<template if:true={pAddButtonView}>
+				<lightning-button name={pAddButtonName} variant="Success" label="Add Products/Options" disabled={pAddButtonDisabled} onclick={onClickHandler}></lightning-button>
+			</template>
+		</lightning-button-group>
 	</lightning-card>
 
 
